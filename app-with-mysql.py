@@ -1,18 +1,18 @@
 from flask import Flask, render_template, request
-from flask_mysqldb import MySQL
+from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
+
 app = Flask(__name__)
-app.config["MYSQL_USER"] = "admin"
-app.config["MYSQL_PASSWORD"] = "Clarusway_1"
-app.config["MYSQL_DB"] = "clarusway"
-db = MySQL(app)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://admin:turan12345@databasee.c3ivokumtvks.us-east-1.rds.amazonaws.com/clarusway'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
 
 with app.app_context():
     drop_table = text('DROP TABLE IF EXISTS users;')
     users_table = text(""" 
     CREATE TABLE users(
-    username VARCHAR NOT NULL PRIMARY KEY,
-    email VARCHAR);
+    username VARCHAR(255) NOT NULL PRIMARY KEY,
+    email VARCHAR(255));
     """)
     data = text("""
     INSERT INTO users
@@ -21,13 +21,12 @@ with app.app_context():
         ("cansın", "cansın@google.com"),
         ("sencer", "sencer@bmw.com"),
         ("uras", "uras@mercedes.com"),
-	    ("ares", "ares@porche.com");
+        ("ares", "ares@porche.com");
         """)
-    cur = db.connection.cursor()
-    cur.execute(drop_table)
-    cur.session.execute(users_table)
-    cur.session.execute(data)
-    cur.session.commit()
+    db.session.execute(drop_table)
+    db.session.execute(users_table)
+    db.session.execute(data)
+    db.session.commit()
 
 def find_emails(keyword):
     with app.app_context():
@@ -40,7 +39,7 @@ def find_emails(keyword):
             user_emails = [("Not Found", "Not Found")]
         return user_emails
 
-def insert_email(name,email):
+def insert_email(name, email):
     with app.app_context():
         query = text(f"""
         SELECT * FROM users WHERE username like '{name}'
@@ -48,7 +47,7 @@ def insert_email(name,email):
         result = db.session.execute(query)
         response = ''
         if len(name) == 0 or len(email) == 0:
-            response = 'Username or email can not be empty!!'
+            response = 'Username or email cannot be empty!!'
         elif not any(result):
             insert = text(f"""
             INSERT INTO users
@@ -58,17 +57,19 @@ def insert_email(name,email):
             db.session.commit()
             response = text(f"User {name} and {email} have been added successfully")
         else:
-            response = text(f"User {name} already exist")
+            response = text(f"User {name} already exists")
         return response
+
 @app.route('/', methods=['GET', 'POST'])
 def emails():
     with app.app_context():
         if request.method == 'POST':
             user_app_name = request.form['user_keyword']
             user_emails = find_emails(user_app_name)
-            return render_template('emails.html', name_emails=user_emails, keyword=user_app_name,   show_result=True)
+            return render_template('emails.html', name_emails=user_emails, keyword=user_app_name, show_result=True)
         else:
             return render_template('emails.html', show_result=False)
+
 @app.route('/add', methods=['GET', 'POST'])
 def add_email():
     with app.app_context():
@@ -80,10 +81,12 @@ def add_email():
         else:
             return render_template('add-email.html', show_result=False)
 
-
 # - Add a statement to run the Flask application which can be reached from any host on port 80.
-if __name__=='__main__':
-    app.run(debug=True)
-    app.run(host='0.0.0.0', port=8080)
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=8080)
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=80)
 
 # https://flask-sqlalchemy.palletsprojects.com/en/2.x/config/
